@@ -45,25 +45,3 @@ export function applicationStatusVariant(value) {
 
   return map[value] || "secondary";
 }
-
-export function matchVerdictLabel(value) {
-  const map = {
-    strong: "Сильное совпадение",
-    good: "Хорошее совпадение",
-    weak: "Нужно уточнить",
-    not_fit: "Слабое совпадение"
-  };
-
-  return map[value] || "AI-анализ";
-}
-
-export function matchVerdictVariant(value) {
-  const map = {
-    strong: "success",
-    good: "default",
-    weak: "warning",
-    not_fit: "secondary"
-  };
-
-  return map[value] || "secondary";
-}

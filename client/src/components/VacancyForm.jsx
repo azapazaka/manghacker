@@ -51,26 +51,6 @@ export default function VacancyForm({ form, setForm, onSubmit, isSubmitting, err
             <Label htmlFor="requirements">Требования</Label>
             <Textarea id="requirements" value={form.requirements} onChange={(event) => updateField("requirements", event.target.value)} />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="ai_required_skills">AI-навыки</Label>
-            <Input id="ai_required_skills" placeholder="касса, продажи, бариста" value={form.ai_required_skills} onChange={(event) => updateField("ai_required_skills", event.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="ai_min_experience_years">Минимальный опыт, лет</Label>
-            <Input id="ai_min_experience_years" value={form.ai_min_experience_years} onChange={(event) => updateField("ai_min_experience_years", event.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="microdistrict">Микрорайон</Label>
-            <Input id="microdistrict" placeholder="например, 14 мкр, центр Актау" value={form.microdistrict} onChange={(event) => updateField("microdistrict", event.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="schedule">График</Label>
-            <Input id="schedule" placeholder="2/2, вечерняя смена, гибкий" value={form.schedule} onChange={(event) => updateField("schedule", event.target.value)} />
-          </div>
-          <div className="space-y-2 lg:col-span-2">
-            <Label htmlFor="ai_summary">AI-краткое описание</Label>
-            <Textarea id="ai_summary" value={form.ai_summary} onChange={(event) => updateField("ai_summary", event.target.value)} />
-          </div>
         </div>
 
         {error ? <Alert intent="error">{error}</Alert> : null}

@@ -1,104 +1,40 @@
 import { ArrowRight, BriefcaseBusiness, Building2, FileText, MapPin, Sparkles, UserRound } from "lucide-react";
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { matchApi } from "../api/matches";
-import { vacancyApi } from "../api/vacancies";
-import VacancyCard from "../components/VacancyCard";
-import VacancyFilters from "../components/VacancyFilters";
+import VacancyFeed from "../components/VacancyFeed";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardTitle } from "../components/ui/card";
 import { useAuth } from "../hooks/useAuth";
 
-const initialFilters = {
-  search: "",
-  category: "",
-  district: "",
-  employment_type: ""
-};
-
 const featureCards = [
   {
     id: "job-seekers",
     kicker: "Для соискателей",
-    title: "Все отклики и офферы под рукой",
-    description: "Вакансии, отклики и приглашения на работу без путаницы между десятками чатов.",
-    chips: ["Отклики", "Кабинет", "Telegram"],
+    title: "Искать работу спокойно и принимать офферы в одном понятном месте",
+    description: "Вакансии, отклики, входящие офферы и решение по ним без путаницы между мессенджерами и сайтами.",
+    chips: ["Отклики", "Почта", "Telegram"],
     icon: UserRound
   },
   {
     id: "employers",
     kicker: "Для работодателей",
-    title: "Удобный поиск сотрудников",
-    description: "Все кандидаты собраны в кабинете, а новые отклики моментально приходят в Telegram.",
+    title: "Публиковать вакансии, получать PDF-резюме и отправлять офферы точечно",
+    description: "Все откликнувшиеся кандидаты по вакансии видны на сайте, а документы прилетают прямо в Telegram.",
     chips: ["Кандидаты", "PDF", "Офферы"],
     icon: Building2
   },
   {
     id: "how-it-works",
     kicker: "Как это работает",
-    title: "Быстро, понятно, эффективно",
-    description: "Мы соединили удобный сайт с привычным Telegram, чтобы вы не пропустили важное.",
-    chips: ["Сайт", "Telegram", "AI-подбор"],
+    title: "Соискатель откликается, работодатель выбирает, Telegram доставляет важное",
+    description: "Qoldan соединяет привычный сайт и быстрые Telegram-уведомления, не заставляя пользователей теряться.",
+    chips: ["Вакансия", "Отклик", "Решение"],
     icon: Sparkles
   }
 ];
 
 export default function HomePage() {
   const { isAuthenticated, user } = useAuth();
-  const [filters, setFilters] = useState(initialFilters);
-  const [vacancies, setVacancies] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [recommendations, setRecommendations] = useState([]);
-  const [isRefreshingMatches, setIsRefreshingMatches] = useState(false);
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        setError("");
-        setIsLoading(true);
-        const query = Object.fromEntries(Object.entries(filters).filter(([, value]) => value));
-        const { data } = await vacancyApi.list(query);
-        setVacancies(data.data);
-      } catch {
-        setError("Не удалось загрузить вакансии.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    load();
-  }, [filters]);
-
-  useEffect(() => {
-    if (!isAuthenticated || user?.role !== "seeker") {
-      return;
-    }
-
-    const loadRecommendations = async () => {
-      try {
-        const { data } = await matchApi.recommendations();
-        setRecommendations(data.data);
-      } catch {
-        setRecommendations([]);
-      }
-    };
-
-    loadRecommendations();
-  }, [isAuthenticated, user?.role]);
-
-  const refreshMatches = async () => {
-    setIsRefreshingMatches(true);
-    try {
-      const { data } = await matchApi.refresh();
-      setRecommendations(data.data.map((match) => recommendations.find((item) => item.vacancy_id === match.vacancy_id) || match));
-      const refreshed = await matchApi.recommendations();
-      setRecommendations(refreshed.data.data);
-    } finally {
-      setIsRefreshingMatches(false);
-    }
-  };
 
   return (
     <div className="space-y-8 pb-6">
@@ -119,17 +55,17 @@ export default function HomePage() {
 
             <div className="space-y-5">
               <h1 className="max-w-4xl text-5xl font-semibold leading-[0.95] tracking-tight text-foreground md:text-6xl">
-                Работа в Мангистау — без хаоса в чатах.
+                Платформа вакансий, где весь путь от отклика до оффера виден сразу.
               </h1>
               <p className="max-w-2xl text-lg leading-8 text-muted-foreground">
-                Откликайтесь на вакансии или находите сотрудников. Быстро, просто и с уведомлениями прямо в Telegram.
+                Соискатель откликается с PDF-резюме, работодатель получает его в Telegram, а оффер и решение по нему проходят через сайт без лишнего хаоса.
               </p>
             </div>
 
             <div className="flex flex-wrap gap-3">
               <Button asChild size="lg">
                 <Link to={isAuthenticated ? (user?.role === "employer" ? "/dashboard" : "/my-applications") : "/register"}>
-                  {isAuthenticated ? "Перейти в кабинет" : "Начать регистрацию"}
+                  Начать регистрацию
                   <ArrowRight className="size-4" />
                 </Link>
               </Button>
@@ -157,8 +93,8 @@ export default function HomePage() {
           <Card className="self-end">
             <CardContent className="space-y-6 p-6">
               <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">Как это работает</p>
-                <CardTitle className="text-2xl leading-tight">От вакансии до первого рабочего дня</CardTitle>
+                <p className="text-sm font-medium text-muted-foreground">Что уже умеет MVP</p>
+                <CardTitle className="text-2xl leading-tight">Вакансии, отклики, кандидаты, Telegram и офферы</CardTitle>
                 <CardDescription className="text-base leading-7">
                   Интерфейс специально строится так, чтобы и работодатель, и соискатель понимали свой следующий шаг без перегруженного кабинета.
                 </CardDescription>
@@ -203,33 +139,6 @@ export default function HomePage() {
         })}
       </section>
 
-      {isAuthenticated && user?.role === "seeker" ? (
-        <section className="space-y-6">
-          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-            <div className="space-y-2">
-              <p className="text-xs uppercase tracking-[0.26em] text-muted-foreground">AI рекомендует</p>
-              <h2 className="text-4xl font-semibold tracking-tight">Вакансии, которые ближе всего к вашему профилю</h2>
-              <p className="max-w-2xl text-muted-foreground">Qoldan анализирует навыки, район, опыт и формат занятости, а затем объясняет каждое совпадение человеческим языком.</p>
-            </div>
-            <Button type="button" variant="secondary" onClick={refreshMatches} disabled={isRefreshingMatches}>
-              {isRefreshingMatches ? "Пересчитываем..." : "Обновить AI"}
-            </Button>
-          </div>
-
-          {recommendations.length === 0 ? (
-            <Card>
-              <CardContent className="p-6 text-muted-foreground">Заполните <Link to="/my-applications" className="underline hover:text-foreground">AI-профиль в кабинете</Link>, чтобы увидеть персональные рекомендации.</CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-              {recommendations.slice(0, 3).map((match) => (
-                <VacancyCard key={match.id} vacancy={match.vacancy} match={match} />
-              ))}
-            </div>
-          )}
-        </section>
-      ) : null}
-
       <section className="space-y-6">
         <div className="space-y-2">
           <p className="text-xs uppercase tracking-[0.26em] text-muted-foreground">Каталог вакансий</p>
@@ -237,31 +146,7 @@ export default function HomePage() {
           <p className="max-w-2xl text-muted-foreground">Фильтруйте предложения по локации, категории и формату занятости. Подача отклика занимает несколько секунд.</p>
         </div>
 
-        <VacancyFilters
-          filters={filters}
-          onChange={(key, value) => setFilters((current) => ({ ...current, [key]: value }))}
-          onReset={() => setFilters(initialFilters)}
-        />
-
-        {isLoading ? (
-          <Card>
-            <CardContent className="p-6 text-muted-foreground">Загружаем вакансии...</CardContent>
-          </Card>
-        ) : error ? (
-          <Card>
-            <CardContent className="p-6 text-rose-600">{error}</CardContent>
-          </Card>
-        ) : vacancies.length === 0 ? (
-          <Card>
-            <CardContent className="p-6 text-muted-foreground">По текущим фильтрам вакансий пока нет.</CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {vacancies.map((vacancy) => (
-              <VacancyCard key={vacancy.id} vacancy={vacancy} />
-            ))}
-          </div>
-        )}
+        <VacancyFeed />
       </section>
     </div>
   );

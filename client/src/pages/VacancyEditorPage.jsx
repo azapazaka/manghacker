@@ -13,12 +13,7 @@ const initialForm = {
   salary: "",
   employment_type: "full_time",
   description: "",
-  requirements: "",
-  ai_required_skills: "",
-  ai_min_experience_years: "",
-  microdistrict: "",
-  schedule: "",
-  ai_summary: ""
+  requirements: ""
 };
 
 export default function VacancyEditorPage() {
@@ -44,12 +39,7 @@ export default function VacancyEditorPage() {
           salary: data.data.salary || "",
           employment_type: data.data.employment_type || "full_time",
           description: data.data.description || "",
-          requirements: data.data.requirements || "",
-          ai_required_skills: Array.isArray(data.data.ai_required_skills) ? data.data.ai_required_skills.join(", ") : "",
-          ai_min_experience_years: data.data.ai_min_experience_years || "",
-          microdistrict: data.data.microdistrict || "",
-          schedule: data.data.schedule || "",
-          ai_summary: data.data.ai_summary || ""
+          requirements: data.data.requirements || ""
         });
       } catch {
         setError("Не удалось загрузить вакансию.");
