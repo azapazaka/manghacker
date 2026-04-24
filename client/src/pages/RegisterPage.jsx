@@ -1,4 +1,4 @@
-﻿import { BriefcaseBusiness, MessageCircleHeart, UserRoundSearch } from "lucide-react";
+import { BriefcaseBusiness, MessageCircleHeart, UserRoundSearch } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Alert } from "../components/ui/alert";
@@ -53,7 +53,7 @@ export default function RegisterPage() {
             };
 
       const { user } = await register(payload);
-      navigate(user.role === "employer" ? "/dashboard" : "/my-applications");
+      navigate("/dashboard");
     } catch (requestError) {
       setError(requestError.response?.data?.message || "Не удалось зарегистрироваться.");
     } finally {

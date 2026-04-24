@@ -1,20 +1,10 @@
-﻿import { ArrowRight, BriefcaseBusiness, Building2, FileText, MapPin, Sparkles, UserRound } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ArrowRight, BriefcaseBusiness, Building2, FileText, MapPin, Sparkles, UserRound } from "lucide-react";
 import { Link } from "react-router-dom";
-import { vacancyApi } from "../api/vacancies";
-import VacancyCard from "../components/VacancyCard";
-import VacancyFilters from "../components/VacancyFilters";
+import VacancyFeed from "../components/VacancyFeed";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardTitle } from "../components/ui/card";
 import { useAuth } from "../hooks/useAuth";
-
-const initialFilters = {
-  search: "",
-  category: "",
-  district: "",
-  employment_type: ""
-};
 
 const featureCards = [
   {
@@ -45,28 +35,6 @@ const featureCards = [
 
 export default function HomePage() {
   const { isAuthenticated, user } = useAuth();
-  const [filters, setFilters] = useState(initialFilters);
-  const [vacancies, setVacancies] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        setError("");
-        setIsLoading(true);
-        const query = Object.fromEntries(Object.entries(filters).filter(([, value]) => value));
-        const { data } = await vacancyApi.list(query);
-        setVacancies(data.data);
-      } catch {
-        setError("Не удалось загрузить вакансии.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    load();
-  }, [filters]);
 
   return (
     <div className="space-y-8 pb-6">
@@ -178,31 +146,7 @@ export default function HomePage() {
           <p className="max-w-2xl text-muted-foreground">Фильтруйте предложения по локации, категории и формату занятости. Подача отклика занимает несколько секунд.</p>
         </div>
 
-        <VacancyFilters
-          filters={filters}
-          onChange={(key, value) => setFilters((current) => ({ ...current, [key]: value }))}
-          onReset={() => setFilters(initialFilters)}
-        />
-
-        {isLoading ? (
-          <Card>
-            <CardContent className="p-6 text-muted-foreground">Загружаем вакансии...</CardContent>
-          </Card>
-        ) : error ? (
-          <Card>
-            <CardContent className="p-6 text-rose-600">{error}</CardContent>
-          </Card>
-        ) : vacancies.length === 0 ? (
-          <Card>
-            <CardContent className="p-6 text-muted-foreground">По текущим фильтрам вакансий пока нет.</CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {vacancies.map((vacancy) => (
-              <VacancyCard key={vacancy.id} vacancy={vacancy} />
-            ))}
-          </div>
-        )}
+        <VacancyFeed />
       </section>
     </div>
   );

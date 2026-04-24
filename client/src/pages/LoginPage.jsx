@@ -1,4 +1,4 @@
-﻿import { KeyRound, MessageCircle, ShieldCheck } from "lucide-react";
+import { KeyRound, MessageCircle, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Alert } from "../components/ui/alert";
@@ -23,7 +23,7 @@ export default function LoginPage() {
     try {
       setIsSubmitting(true);
       const { user } = await login({ email, password });
-      navigate(user.role === "employer" ? "/dashboard" : "/my-applications");
+      navigate("/dashboard");
     } catch (requestError) {
       setError(requestError.response?.data?.message || "Не удалось выполнить вход.");
     } finally {

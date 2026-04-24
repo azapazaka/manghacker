@@ -1,4 +1,4 @@
-﻿const db = require("../db/knex");
+const db = require("../db/knex");
 
 function baseVacancyQuery() {
   return db("vacancies").join("users as employers", "vacancies.employer_id", "employers.id");
@@ -91,7 +91,7 @@ async function createVacancy(req, res) {
         description: description.trim(),
         requirements: (requirements || "").trim(),
         employment_type,
-        salary: salary ? Number(salary) : null,
+        salary: salary ? parseInt(String(salary).replace(/\D/g, ""), 10) || null : null,
         district: district.trim(),
         category: category.trim()
       })
@@ -120,7 +120,7 @@ async function updateVacancy(req, res) {
       description: req.body.description?.trim(),
       requirements: req.body.requirements?.trim(),
       employment_type: req.body.employment_type,
-      salary: req.body.salary ? Number(req.body.salary) : null,
+      salary: req.body.salary ? parseInt(String(req.body.salary).replace(/\D/g, ""), 10) || null : null,
       district: req.body.district?.trim(),
       category: req.body.category?.trim(),
       is_active: typeof req.body.is_active === "boolean" ? req.body.is_active : vacancy.is_active,

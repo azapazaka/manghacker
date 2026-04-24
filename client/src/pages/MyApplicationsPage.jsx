@@ -1,12 +1,13 @@
-﻿import { Check, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { applicationApi } from "../api/applications";
 import TelegramBanner from "../components/TelegramBanner";
+import VacancyFeed from "../components/VacancyFeed";
 import { Alert } from "../components/ui/alert";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardTitle } from "../components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { useAuth } from "../hooks/useAuth";
 import { applicationStatusLabel, applicationStatusVariant, employmentTypeLabel, formatDate, formatSalary } from "../utils/formatters";
 
@@ -14,6 +15,8 @@ const botUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME || "QooldaaanBot"
 
 export default function MyApplicationsPage() {
   const { user } = useAuth();
+  const location = useLocation();
+  const currentTab = location.pathname.split("/").pop(); // applications, inbox, profile
   const [offers, setOffers] = useState([]);
   const [applications, setApplications] = useState([]);
   const [message, setMessage] = useState("");
@@ -41,37 +44,38 @@ export default function MyApplicationsPage() {
 
   return (
     <div className="space-y-6">
-      <section className="grid gap-6 lg:grid-cols-[1.15fr_360px]">
-        <Card className="overflow-hidden bg-hero">
-          <CardContent className="space-y-5 p-8 md:p-10">
-            <Badge variant="secondary" className="rounded-full px-4 py-2">Почта соискателя</Badge>
-            <h1 className="text-5xl font-semibold leading-[0.96] tracking-tight">Принимайте решения по офферам на сайте, а уведомления получайте в Telegram.</h1>
-            <p className="max-w-2xl text-lg leading-8 text-muted-foreground">
-              Здесь хранится короткая почта по офферам: от какой вакансии, от какой компании и какое решение уже принято.
-            </p>
-          </CardContent>
-        </Card>
+      {currentTab === "vacancies" && (
+        <VacancyFeed />
+      )}
 
-        <Card>
-          <CardContent className="space-y-5 p-6">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Профиль</p>
-              <CardTitle>{user?.full_name || user?.name}</CardTitle>
-              <CardDescription>@{user?.telegram_username}</CardDescription>
-            </div>
-            {!user?.telegram_chat_id ? <TelegramBanner botUsername={botUsername} roleLabel="Соискатель" /> : null}
-            {message ? <Alert intent="success">{message}</Alert> : null}
-          </CardContent>
-        </Card>
-      </section>
+      {currentTab === "profile" && (
+        <section className="grid gap-6 lg:grid-cols-[1.15fr_360px]">
+          <Card className="overflow-hidden bg-hero">
+            <CardContent className="space-y-5 p-8 md:p-10">
+              <Badge variant="secondary" className="rounded-full px-4 py-2">Ваш профиль</Badge>
+              <h1 className="text-5xl font-semibold leading-[0.96] tracking-tight">Принимайте решения по офферам на сайте, а уведомления получайте в Telegram.</h1>
+              <p className="max-w-2xl text-lg leading-8 text-muted-foreground">
+                Подключите Telegram, чтобы мгновенно узнавать о новых сообщениях.
+              </p>
+            </CardContent>
+          </Card>
 
-      <Tabs defaultValue="offers">
-        <TabsList>
-          <TabsTrigger value="offers">Почта</TabsTrigger>
-          <TabsTrigger value="applications">Мои отклики</TabsTrigger>
-        </TabsList>
+          <Card>
+            <CardContent className="space-y-5 p-6">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Профиль</p>
+                <CardTitle>{user?.full_name || user?.name}</CardTitle>
+                <CardDescription>@{user?.telegram_username}</CardDescription>
+              </div>
+              {!user?.telegram_chat_id ? <TelegramBanner botUsername={botUsername} roleLabel="Соискатель" /> : null}
+              {message ? <Alert intent="success">{message}</Alert> : null}
+            </CardContent>
+          </Card>
+        </section>
+      )}
 
-        <TabsContent value="offers">
+      {currentTab === "inbox" && (
+        <div className="space-y-5">
           {offers.length === 0 ? (
             <Card>
               <CardContent className="p-6 text-muted-foreground">Пока офферов нет. Когда работодатель пришлет предложение, оно появится здесь.</CardContent>
@@ -110,9 +114,11 @@ export default function MyApplicationsPage() {
               ))}
             </div>
           )}
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="applications">
+      {currentTab === "applications" && (
+        <div className="space-y-5">
           {applications.length === 0 ? (
             <Card>
               <CardContent className="p-6 text-muted-foreground">Вы еще не отправляли отклики.</CardContent>
@@ -139,8 +145,8 @@ export default function MyApplicationsPage() {
               ))}
             </div>
           )}
-        </TabsContent>
-      </Tabs>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
-﻿import { Bot, BriefcaseBusiness, MailPlus, Plus, Send } from "lucide-react";
+import { Bot, BriefcaseBusiness, MailPlus, Plus, Send } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { applicationApi } from "../api/applications";
 import { vacancyApi } from "../api/vacancies";
 import TelegramBanner from "../components/TelegramBanner";
@@ -8,7 +8,6 @@ import { Alert } from "../components/ui/alert";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardTitle } from "../components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { useAuth } from "../hooks/useAuth";
 import { applicationStatusLabel, applicationStatusVariant, employmentTypeLabel, formatDate, formatSalary } from "../utils/formatters";
 
@@ -16,6 +15,8 @@ const botUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME || "QooldaaanBot"
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const location = useLocation();
+  const currentTab = location.pathname.split("/").pop(); // vacancies, candidates, profile
   const [vacancies, setVacancies] = useState([]);
   const [selectedVacancyId, setSelectedVacancyId] = useState("");
   const [candidates, setCandidates] = useState([]);
@@ -65,62 +66,61 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <section className="grid gap-6 lg:grid-cols-[1.15fr_360px]">
-        <Card className="overflow-hidden bg-hero">
-          <CardContent className="space-y-6 p-8 md:p-10">
-            <Badge variant="secondary" className="rounded-full px-4 py-2">Кабинет работодателя</Badge>
-            <div className="space-y-4">
-              <h1 className="text-5xl font-semibold leading-[0.96] tracking-tight">Управляйте вакансиями, кандидатами и офферами без ручной рутины.</h1>
-              <p className="max-w-2xl text-lg leading-8 text-muted-foreground">
-                После отклика резюме прилетает вам в Telegram, а на сайте вы выбираете кандидата и отправляете ему оффер в пару кликов.
-              </p>
-            </div>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="rounded-[28px] border border-white/80 bg-white/80 p-5">
-                <BriefcaseBusiness className="mb-4 size-5" />
-                <p className="font-medium">{vacancies.length}</p>
-                <p className="text-sm text-muted-foreground">вакансий в кабинете</p>
+      {currentTab === "profile" && (
+        <section className="grid gap-6 lg:grid-cols-[1.15fr_360px]">
+          <Card className="overflow-hidden bg-hero">
+            <CardContent className="space-y-6 p-8 md:p-10">
+              <Badge variant="secondary" className="rounded-full px-4 py-2">Кабинет работодателя</Badge>
+              <div className="space-y-4">
+                <h1 className="text-5xl font-semibold leading-[0.96] tracking-tight">Управляйте профилем и Telegram интеграцией.</h1>
+                <p className="max-w-2xl text-lg leading-8 text-muted-foreground">
+                  Telegram-бот присылает резюме откликнувшихся соискателей в виде удобных PDF прямо в ваш мессенджер.
+                </p>
               </div>
-              <div className="rounded-[28px] border border-white/80 bg-white/80 p-5">
-                <MailPlus className="mb-4 size-5" />
-                <p className="font-medium">{candidates.length}</p>
-                <p className="text-sm text-muted-foreground">кандидатов по выбранной вакансии</p>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="rounded-[28px] border border-white/80 bg-white/80 p-5">
+                  <BriefcaseBusiness className="mb-4 size-5" />
+                  <p className="font-medium">{vacancies.length}</p>
+                  <p className="text-sm text-muted-foreground">вакансий в кабинете</p>
+                </div>
+                <div className="rounded-[28px] border border-white/80 bg-white/80 p-5">
+                  <MailPlus className="mb-4 size-5" />
+                  <p className="font-medium">{candidates.length}</p>
+                  <p className="text-sm text-muted-foreground">кандидатов всего</p>
+                </div>
+                <div className="rounded-[28px] border border-white/80 bg-white/80 p-5">
+                  <Bot className="mb-4 size-5" />
+                  <p className="font-medium">{user?.telegram_chat_id ? "Активен" : "Нужно /start"}</p>
+                  <p className="text-sm text-muted-foreground">статус Telegram-бота</p>
+                </div>
               </div>
-              <div className="rounded-[28px] border border-white/80 bg-white/80 p-5">
-                <Bot className="mb-4 size-5" />
-                <p className="font-medium">{user?.telegram_chat_id ? "Активен" : "Нужно /start"}</p>
-                <p className="text-sm text-muted-foreground">статус Telegram-бота</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent className="space-y-5 p-6">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Компания</p>
-              <CardTitle>{user?.company_name}</CardTitle>
-              <CardDescription>Контактное лицо: {user?.contact_name || user?.name}</CardDescription>
-            </div>
-            {!user?.telegram_chat_id ? <TelegramBanner botUsername={botUsername} roleLabel="Работодатель" /> : null}
-            {message ? <Alert intent="success">{message}</Alert> : null}
-            <Button asChild className="w-full">
+          <Card>
+            <CardContent className="space-y-5 p-6">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Компания</p>
+                <CardTitle>{user?.company_name}</CardTitle>
+                <CardDescription>Контактное лицо: {user?.contact_name || user?.name}</CardDescription>
+              </div>
+              {!user?.telegram_chat_id ? <TelegramBanner botUsername={botUsername} roleLabel="Работодатель" /> : null}
+              {message ? <Alert intent="success">{message}</Alert> : null}
+            </CardContent>
+          </Card>
+        </section>
+      )}
+
+      {currentTab === "vacancies" && (
+        <div className="space-y-5">
+          <div className="flex justify-end">
+            <Button asChild>
               <Link to="/dashboard/vacancies/new">
                 <Plus className="size-4" />
                 Добавить вакансию
               </Link>
             </Button>
-          </CardContent>
-        </Card>
-      </section>
-
-      <Tabs defaultValue="vacancies">
-        <TabsList>
-          <TabsTrigger value="vacancies">Мои вакансии</TabsTrigger>
-          <TabsTrigger value="candidates">Кандидаты</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="vacancies">
+          </div>
           {vacancies.length === 0 ? (
             <Card>
               <CardContent className="p-6 text-muted-foreground">У вас пока нет вакансий. Создайте первую карточку.</CardContent>
@@ -157,9 +157,10 @@ export default function DashboardPage() {
               ))}
             </div>
           )}
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="candidates">
+      {currentTab === "candidates" && (
           <div className="space-y-5">
             <Card>
               <CardContent className="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
@@ -210,8 +211,7 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
-        </TabsContent>
-      </Tabs>
+      )}
     </div>
   );
 }
