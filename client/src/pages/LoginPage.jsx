@@ -22,7 +22,7 @@ export default function LoginPage() {
 
     try {
       setIsSubmitting(true);
-      const { user } = await login({ email, password });
+      await login({ email, password });
       navigate("/dashboard");
     } catch (requestError) {
       setError(requestError.response?.data?.message || "Не удалось выполнить вход.");

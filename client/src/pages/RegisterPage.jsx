@@ -52,7 +52,7 @@ export default function RegisterPage() {
               telegram_username: form.telegram_username
             };
 
-      const { user } = await register(payload);
+      await register(payload);
       navigate("/dashboard");
     } catch (requestError) {
       setError(requestError.response?.data?.message || "Не удалось зарегистрироваться.");

@@ -1,6 +1,7 @@
 const db = require("../db/knex");
 const { sanitizeUser } = require("../utils/responses");
 const { normalizeList } = require("../services/match.service");
+const { requestOnboardingParse } = require("../services/llm.service");
 
 function normalizeExperience(value) {
   if (value === "" || value === null || value === undefined) {
@@ -61,4 +62,40 @@ async function updateMyProfile(req, res) {
   }
 }
 
-module.exports = { getMyProfile, updateMyProfile };
+async function parseOnboarding(req, res) {
+  try {
+    if (req.user.role !== "seeker") {
+      return res.status(403).json({ message: "Только соискатель." });
+    }
+
+    const messages = req.body.messages || [];
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({ message: "История сообщений обязательна." });
+    }
+
+    const parsedState = await requestOnboardingParse(messages);
+
+    if (parsedState.match_ready) {
+      const districts = parsedState.location_type === "city" 
+        ? ["Весь город"] 
+        : parsedState.district ? [parsedState.district] : [];
+        
+      const patch = {
+        skills: JSON.stringify(normalizeList(parsedState.skills || [])),
+        preferred_districts: JSON.stringify(normalizeList(districts)),
+        preferred_employment_type: parsedState.work_schedule || null,
+        profile_summary: parsedState.desired_role || "",
+        profile_updated_at: db.fn.now()
+      };
+
+      await db("users").where({ id: req.user.id }).update(patch);
+    }
+
+    return res.json({ data: parsedState });
+  } catch (error) {
+    console.error("parseOnboarding error:", error);
+    return res.status(500).json({ message: "Ошибка обработки онбординга." });
+  }
+}
+
+module.exports = { getMyProfile, updateMyProfile, parseOnboarding };

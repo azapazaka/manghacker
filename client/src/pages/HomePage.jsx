@@ -1,5 +1,6 @@
 import { ArrowRight, BriefcaseBusiness, Building2, FileText, MapPin, Sparkles, UserRound } from "lucide-react";
 import { Link } from "react-router-dom";
+import AktauJobsMap from "../components/AktauJobsMap";
 import VacancyFeed from "../components/VacancyFeed";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -147,6 +148,10 @@ export default function HomePage() {
         </div>
 
         <VacancyFeed />
+      </section>
+
+      <section className="space-y-4">
+        <AktauJobsMap />
       </section>
     </div>
   );

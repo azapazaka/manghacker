@@ -3,7 +3,9 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { applicationApi } from "../api/applications";
 import TelegramBanner from "../components/TelegramBanner";
+import SeekerJobsMap from "../components/SeekerJobsMap";
 import VacancyFeed from "../components/VacancyFeed";
+import SeekerOnboarding from "../components/SeekerOnboarding";
 import { Alert } from "../components/ui/alert";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -20,6 +22,7 @@ export default function MyApplicationsPage() {
   const [offers, setOffers] = useState([]);
   const [applications, setApplications] = useState([]);
   const [message, setMessage] = useState("");
+  const showOnboarding = Boolean(user && !user.profile_summary);
 
   const load = async () => {
     const [offersResponse, applicationsResponse] = await Promise.all([applicationApi.offers(), applicationApi.my()]);
@@ -44,9 +47,18 @@ export default function MyApplicationsPage() {
 
   return (
     <div className="space-y-6">
+      <SeekerOnboarding 
+        open={showOnboarding} 
+        onComplete={() => {
+          window.location.reload();
+        }} 
+      />
+
       {currentTab === "vacancies" && (
         <VacancyFeed />
       )}
+
+      {currentTab === "map" && <SeekerJobsMap />}
 
       {currentTab === "profile" && (
         <section className="grid gap-6 lg:grid-cols-[1.15fr_360px]">

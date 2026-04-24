@@ -1,4 +1,4 @@
-﻿const db = require("../db/knex");
+const db = require("../db/knex");
 const { getVacancyMatches: getAiVacancyMatches } = require("../services/match.service");
 const { normalizeList } = require("../services/match.service");
 
@@ -98,7 +98,7 @@ async function createVacancy(req, res) {
         description: description.trim(),
         requirements: (requirements || "").trim(),
         employment_type,
-        salary: salary ? Number(salary) : null,
+        salary: salary ? parseInt(salary, 10) : null,
         district: district.trim(),
         category: category.trim(),
         ai_required_skills: JSON.stringify(normalizeList(req.body.ai_required_skills)),
@@ -132,7 +132,7 @@ async function updateVacancy(req, res) {
       description: req.body.description?.trim(),
       requirements: req.body.requirements?.trim(),
       employment_type: req.body.employment_type,
-      salary: req.body.salary ? Number(req.body.salary) : null,
+      salary: req.body.salary ? parseInt(req.body.salary, 10) : null,
       district: req.body.district?.trim(),
       category: req.body.category?.trim(),
       ai_required_skills: req.body.ai_required_skills === undefined ? undefined : JSON.stringify(normalizeList(req.body.ai_required_skills)),

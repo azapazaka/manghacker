@@ -14,7 +14,16 @@ import {
   DialogTrigger
 } from "./ui/dialog";
 
-export default function ApplyDialog({ vacancyId, onApplied }) {
+export default function ApplyDialog({
+  vacancyId,
+  onApplied,
+  triggerLabel = "Откликнуться",
+  triggerVariant = "default",
+  triggerSize = "lg",
+  triggerClassName = "",
+  triggerIcon = null,
+  triggerAriaLabel
+}) {
   const { isAuthenticated, user } = useAuth();
   const [file, setFile] = useState(null);
   const [error, setError] = useState("");
@@ -56,7 +65,11 @@ export default function ApplyDialog({ vacancyId, onApplied }) {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button size="lg">Откликнуться</Button>
+        <Button size={triggerSize} variant={triggerVariant} className={triggerClassName}>
+          {triggerAriaLabel ? <span className="sr-only">{triggerAriaLabel}</span> : null}
+          {triggerIcon}
+          {triggerLabel}
+        </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

@@ -1,5 +1,5 @@
 import { BriefcaseBusiness, Mail, Sparkles } from "lucide-react";
-import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { Button } from "./ui/button";
 
@@ -24,16 +24,8 @@ function Brand() {
 }
 
 export default function AppLayout() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
-
-  const handleLogout = async () => {
-    await logout();
-    navigate("/");
-  };
-
-  const isHome = location.pathname === "/";
 
   return (
     <div className="relative min-h-screen overflow-hidden">

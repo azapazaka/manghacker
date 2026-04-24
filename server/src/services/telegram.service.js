@@ -1,4 +1,5 @@
-﻿const TelegramBot = require("node-telegram-bot-api");
+const TelegramBot = require("node-telegram-bot-api");
+const fs = require("fs");
 const db = require("../db/knex");
 const env = require("../config/env");
 
@@ -58,7 +59,7 @@ async function sendResumeToEmployer(chatId, filePath, { vacancyTitle, seekerName
 
   const caption = [`Новый отклик на вакансию: ${vacancyTitle}`, `Соискатель: ${seekerName}`, `Email: ${seekerEmail}`, `Telegram: @${seekerTelegram}`].join("\n");
 
-  await activeBot.sendDocument(chatId, filePath, { caption });
+  await activeBot.sendDocument(chatId, fs.createReadStream(filePath), { caption });
 }
 
 async function sendOfferToSeeker(chatId, { vacancyTitle, companyName, district }) {

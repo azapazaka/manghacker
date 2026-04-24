@@ -30,6 +30,7 @@ export default function DashboardLayout() {
     user?.role === "seeker"
       ? [
           { to: "/dashboard/vacancies", label: "Вакансии", icon: Layers },
+          { to: "/dashboard/map", label: "Карта работ", icon: BriefcaseBusiness },
           { to: "/dashboard/applications", label: "Отклики", icon: Send },
           { to: "/dashboard/inbox", label: "Почта", icon: Inbox },
           { to: "/dashboard/profile", label: "Профиль", icon: UserRound }

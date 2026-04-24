@@ -63,6 +63,71 @@ const EMPLOYER_MATCH_SYSTEM_PROMPT = `Роль:
 
 ${COMMON_MATCH_PROMPT_RULES}`;
 
+const ONBOARDING_SYSTEM_PROMPT = `You are an AI onboarding and matching assistant for a local job platform in Aktau (Kazakhstan).
+
+Your role is to:
+1. Collect minimal user data through 3 conversational questions
+2. Analyze each answer immediately
+3. Build a structured candidate profile (JSON)
+4. Continuously refine job recommendations after each answer
+5. Prepare the system for a TikTok-style job feed (even if UI is not implemented yet)
+
+🎯 GOAL:
+Find relevant jobs as fast as possible with minimal user effort.
+
+🧩 STEP-BY-STEP FLOW:
+
+STEP 1 — Job Preference
+Ask: "Кем хочешь работать?"
+After answer: Extract role, Infer possible skills, Update JSON, Set match_ready = false
+
+STEP 2 — Work Schedule
+Ask: "Когда тебе удобно работать?"
+Options: полный день, вечером, выходные, гибкий график
+
+STEP 3 — Location
+Ask: "Где тебе удобно работать?"
+Options: "Рядом со мной", "Выбрать район", "Весь город"
+
+📍 LOCATION LOGIC:
+IF user selects "Рядом со мной" -> Set location_type = "nearby"
+IF user selects "Выбрать район" -> Ask user to input district (e.g. "15 мкр"), save into district, Set location_type = "district"
+IF user selects "Весь город" -> Set location_type = "city"
+
+🧠 MATCHING LOGIC:
+After EACH answer: Start preliminary matching.
+
+🎬 FINAL STEP:
+After Step 3: Set match_ready = true, Generate message: "🔍 Подбираем вакансии рядом с тобой..."
+
+💬 STYLE:
+- Short, Friendly, Gen Z tone, No formal language, No long explanations
+
+⚠️ RULES:
+- Never ask more than one question at a time
+- Do not show JSON to user (internal only)
+- Always adapt questions based on previous answers
+- If user writes free text -> parse with NLP
+- You MUST provide the next question or final message in the "reply_message" field.
+
+🔥 EXTRA:
+If user writes "хочу подработку вечером в кафе" -> Parse role, schedule, skills, and skip unnecessary questions.`;
+
+const ONBOARDING_JSON_SCHEMA = {
+  type: "object",
+  properties: {
+    desired_role: { type: "string" },
+    skills: { type: "array", items: { type: "string" } },
+    work_schedule: { type: "string" },
+    location_type: { type: "string" },
+    district: { type: "string" },
+    match_ready: { type: "boolean" },
+    reply_message: { type: "string" }
+  },
+  required: ["desired_role", "skills", "work_schedule", "location_type", "district", "match_ready", "reply_message"],
+  additionalProperties: false
+};
+
 function getProviderConfig() {
   if (env.aiProvider === "groq") {
     return {
@@ -189,8 +254,53 @@ async function requestMatchAnalysis({ payload, audience = "seeker" }) {
   };
 }
 
+async function requestOnboardingParse(messagesHistory) {
+  const providerConfig = getProviderConfig();
+
+  if (!providerConfig.apiKey) {
+    throw new Error(`${providerConfig.provider} API key is not configured.`);
+  }
+
+  const response = await fetch(providerConfig.url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${providerConfig.apiKey}`,
+      "Content-Type": "application/json",
+      ...providerConfig.headers
+    },
+    body: JSON.stringify({
+      model: providerConfig.model,
+      stream: false,
+      temperature: 0.3,
+      max_tokens: 500,
+      messages: [
+        { role: "system", content: ONBOARDING_SYSTEM_PROMPT },
+        ...messagesHistory
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "qoldan_onboarding_state",
+          strict: true,
+          schema: ONBOARDING_JSON_SCHEMA
+        }
+      }
+    })
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`LLM onboarding request failed with ${response.status}: ${body.slice(0, 180)}`);
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content;
+  return parseModelContent(content);
+}
+
 module.exports = {
   requestMatchAnalysis,
+  requestOnboardingParse,
   getProviderConfig,
   sanitizeLlmError,
   MATCH_JSON_SCHEMA,
