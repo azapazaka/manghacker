@@ -1,0 +1,39 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "Qoldan backend API",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js",
+    "migrate": "knex migrate:latest --knexfile src/db/knexfile.js",
+    "rollback": "knex migrate:rollback --knexfile src/db/knexfile.js"
+  },
+  "keywords": [
+    "express",
+    "telegram",
+    "postgres"
+  ],
+  "author": "Codex",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "helmet": "^8.1.0",
+    "http-proxy-middleware": "^3.0.5",
+    "jsonwebtoken": "^9.0.3",
+    "knex": "^3.2.9",
+    "morgan": "^1.10.1",
+    "multer": "^2.1.1",
+    "node-telegram-bot-api": "^0.67.0",
+    "pg": "^8.20.0",
+    "uuid": "^14.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
