@@ -15,6 +15,13 @@ function sanitizeUser(user) {
     email: user.email,
     telegram_username: user.telegram_username,
     telegram_chat_id: user.telegram_chat_id,
+    skills: user.skills || [],
+    experience_years: user.experience_years ?? null,
+    preferred_districts: user.preferred_districts || [],
+    preferred_employment_type: user.preferred_employment_type || null,
+    profile_summary: user.profile_summary || "",
+    availability: user.availability || "",
+    profile_updated_at: user.profile_updated_at || null,
     created_at: user.created_at
   };
 }

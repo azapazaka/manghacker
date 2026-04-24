@@ -10,6 +10,8 @@ const db = require("./db/knex");
 const authRoutes = require("./routes/auth.routes");
 const vacancyRoutes = require("./routes/vacancy.routes");
 const applicationRoutes = require("./routes/application.routes");
+const profileRoutes = require("./routes/profile.routes");
+const matchRoutes = require("./routes/match.routes");
 const { getTelegramWebhookPath, initTelegramBot } = require("./services/telegram.service");
 
 const app = express();
@@ -134,6 +136,8 @@ app.get("/api/health", async (_, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/vacancies", vacancyRoutes);
 app.use("/api/applications", applicationRoutes);
+app.use("/api/profile", profileRoutes);
+app.use("/api/matches", matchRoutes);
 
 let viteProxy = null;
 

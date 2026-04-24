@@ -1,4 +1,6 @@
 ﻿const db = require("../db/knex");
+const { getVacancyMatches: getAiVacancyMatches } = require("../services/match.service");
+const { normalizeList } = require("../services/match.service");
 
 function baseVacancyQuery() {
   return db("vacancies").join("users as employers", "vacancies.employer_id", "employers.id");
@@ -23,6 +25,11 @@ async function listVacancies(req, res) {
         "vacancies.salary",
         "vacancies.district",
         "vacancies.category",
+        "vacancies.ai_required_skills",
+        "vacancies.ai_min_experience_years",
+        "vacancies.microdistrict",
+        "vacancies.schedule",
+        "vacancies.ai_summary",
         "vacancies.is_active",
         "vacancies.created_at",
         "vacancies.updated_at",
@@ -93,7 +100,12 @@ async function createVacancy(req, res) {
         employment_type,
         salary: salary ? Number(salary) : null,
         district: district.trim(),
-        category: category.trim()
+        category: category.trim(),
+        ai_required_skills: JSON.stringify(normalizeList(req.body.ai_required_skills)),
+        ai_min_experience_years: req.body.ai_min_experience_years ? Number(req.body.ai_min_experience_years) : null,
+        microdistrict: (req.body.microdistrict || "").trim(),
+        schedule: (req.body.schedule || "").trim(),
+        ai_summary: (req.body.ai_summary || "").trim()
       })
       .returning("*");
 
@@ -123,6 +135,11 @@ async function updateVacancy(req, res) {
       salary: req.body.salary ? Number(req.body.salary) : null,
       district: req.body.district?.trim(),
       category: req.body.category?.trim(),
+      ai_required_skills: req.body.ai_required_skills === undefined ? undefined : JSON.stringify(normalizeList(req.body.ai_required_skills)),
+      ai_min_experience_years: req.body.ai_min_experience_years === undefined ? undefined : req.body.ai_min_experience_years === "" ? null : Number(req.body.ai_min_experience_years),
+      microdistrict: req.body.microdistrict?.trim(),
+      schedule: req.body.schedule?.trim(),
+      ai_summary: req.body.ai_summary?.trim(),
       is_active: typeof req.body.is_active === "boolean" ? req.body.is_active : vacancy.is_active,
       updated_at: db.fn.now()
     };
@@ -185,6 +202,10 @@ async function getVacancyCandidates(req, res) {
         "seekers.id as seeker_id",
         "seekers.email as seeker_email",
         "seekers.telegram_username as seeker_telegram_username",
+        "seekers.skills",
+        "seekers.experience_years",
+        "seekers.preferred_districts",
+        "seekers.preferred_employment_type",
         db.raw("COALESCE(seekers.full_name, seekers.name) as seeker_name")
       )
       .orderBy("applications.created_at", "desc");
@@ -195,6 +216,24 @@ async function getVacancyCandidates(req, res) {
   }
 }
 
+async function getVacancyMatches(req, res) {
+  try {
+    const result = await getAiVacancyMatches({
+      employerId: req.user.id,
+      vacancyId: req.params.id
+    });
+
+    if (!result) {
+      return res.status(404).json({ message: "Вакансия не найдена." });
+    }
+
+    return res.json({ data: result });
+  } catch (error) {
+    console.error("getVacancyMatches error", error);
+    return res.status(500).json({ message: "Не удалось получить AI-кандидатов." });
+  }
+}
+
 module.exports = {
   listVacancies,
   getVacancy,
@@ -202,5 +241,6 @@ module.exports = {
   updateVacancy,
   deleteVacancy,
   getMyVacancies,
-  getVacancyCandidates
+  getVacancyCandidates,
+  getVacancyMatches
 };

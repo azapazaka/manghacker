@@ -1,4 +1,4 @@
-﻿import { BriefcaseBusiness, ChevronDown, Mail, Sparkles, UserRound } from "lucide-react";
+import { BriefcaseBusiness, ChevronDown, Mail, Menu, Sparkles, UserRound } from "lucide-react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { Button } from "./ui/button";
@@ -63,12 +63,12 @@ export default function AppLayout() {
               ) : null}
               {user?.role === "seeker" ? (
                 <NavLink to="/my-applications" className="text-sm font-medium text-muted-foreground hover:text-foreground">
-                  Почта
+                  Мои отклики
                 </NavLink>
               ) : null}
             </nav>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               {isAuthenticated ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -82,19 +82,48 @@ export default function AppLayout() {
                     {user?.role === "employer" ? (
                       <DropdownMenuItem onClick={() => navigate("/dashboard")}>Кабинет работодателя</DropdownMenuItem>
                     ) : (
-                      <DropdownMenuItem onClick={() => navigate("/my-applications")}>Почта и офферы</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/my-applications")}>Мой кабинет</DropdownMenuItem>
                     )}
                     <DropdownMenuItem onClick={handleLogout}>Выйти</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
                 <>
-                  <Button variant="secondary" onClick={() => navigate("/login")}>
+                  <Button variant="secondary" className="hidden sm:inline-flex" onClick={() => navigate("/login")}>
                     Войти
                   </Button>
-                  <Button onClick={() => navigate("/register")}>Регистрация</Button>
+                  <Button className="hidden sm:inline-flex" onClick={() => navigate("/register")}>Регистрация</Button>
                 </>
               )}
+
+              <div className="lg:hidden">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon" className="shrink-0">
+                      <Menu className="size-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    {navItems.map((item) => (
+                      <DropdownMenuItem key={item.label} asChild>
+                        <a href={isHome ? item.to : item.to.replace("/", "")}>{item.label}</a>
+                      </DropdownMenuItem>
+                    ))}
+                    {user?.role === "employer" ? (
+                      <DropdownMenuItem onClick={() => navigate("/dashboard")}>Кабинет</DropdownMenuItem>
+                    ) : null}
+                    {user?.role === "seeker" ? (
+                      <DropdownMenuItem onClick={() => navigate("/my-applications")}>Мои отклики</DropdownMenuItem>
+                    ) : null}
+                    {!isAuthenticated ? (
+                      <>
+                        <DropdownMenuItem onClick={() => navigate("/login")}>Войти</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => navigate("/register")}>Регистрация</DropdownMenuItem>
+                      </>
+                    ) : null}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           </div>
         </div>

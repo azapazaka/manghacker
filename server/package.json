@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
+    "test": "node --test \"src/**/*.test.js\"",
+    "check:llm": "node scripts/check-llm.js",
     "migrate": "knex migrate:latest --knexfile src/db/knexfile.js",
     "rollback": "knex migrate:rollback --knexfile src/db/knexfile.js"
   },
