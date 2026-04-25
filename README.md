@@ -233,6 +233,31 @@ Important:
 - keep the OpenAI key only in `server/.env`
 - rotate the key before final delivery if it was ever shared outside the local machine
 
+### Demo login
+
+Employer demo account:
+
+```text
+email: demo.employer.aktau@qoldan.kz
+password: 123456
+```
+
+### Demo flow
+
+1. Log in as the employer demo account.
+2. Open `/dashboard/ai`.
+3. Select one of the `DEMO AI · ...` vacancies.
+4. Review the top AI-ranked candidates with score, summary, interview focus, and outreach message.
+5. Click `Пригласить к отклику` to move the candidate into outreach flow.
+
+Recommended vacancy for the strongest demo:
+
+```text
+DEMO AI · Продавец-кассир (15 мкр)
+```
+
+This vacancy should show several high-quality AI matches immediately after seeding.
+
 ## Status
 
 This repository contains the backend, frontend, AI matching flow, and Telegram bot foundation for the MVP. AI is implemented as part of onboarding and vacancy recommendation behavior, not only as pitch material.
