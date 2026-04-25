@@ -37,6 +37,7 @@ function computeFallbackMatch({ seeker, vacancy }) {
   const seekerSkills = normalizeList(seeker?.skills);
   const requiredSkills = normalizeList(vacancy?.ai_required_skills);
   const preferredDistricts = normalizeList(seeker?.preferred_districts);
+  const prefersWholeCity = !preferredDistricts.length && ["city", "nearby"].includes(normalizeText(seeker?.availability));
   const vacancyDistrict = normalizeText(vacancy?.microdistrict || vacancy?.district);
   const seekerEmploymentType = normalizeText(seeker?.preferred_employment_type);
   const vacancyEmploymentType = normalizeText(vacancy?.employment_type);
@@ -46,7 +47,7 @@ function computeFallbackMatch({ seeker, vacancy }) {
   const matchedSkills = requiredSkills.filter((skill) => seekerSkills.includes(skill));
   const missingSkills = requiredSkills.filter((skill) => !seekerSkills.includes(skill));
   const skillRatio = requiredSkills.length ? matchedSkills.length / requiredSkills.length : seekerSkills.length ? 0.8 : 0;
-  const districtMatches = vacancyDistrict && preferredDistricts.some((district) => vacancyDistrict.includes(district) || district.includes(vacancyDistrict));
+  const districtMatches = prefersWholeCity || (vacancyDistrict && preferredDistricts.some((district) => vacancyDistrict.includes(district) || district.includes(vacancyDistrict)));
   const employmentMatches = seekerEmploymentType && vacancyEmploymentType && seekerEmploymentType === vacancyEmploymentType;
   const experienceMatches = Number.isFinite(seekerExperience) && seekerExperience >= minExperience;
 
@@ -67,12 +68,12 @@ function computeFallbackMatch({ seeker, vacancy }) {
   if (experienceMatches) reasons.push("Опыт закрывает минимальное требование.");
 
   if (missingSkills.length) risks.push(`Не хватает навыков: ${missingSkills.join(", ")}.`);
-  if (!districtMatches) risks.push("Локация не подтверждена в предпочтениях соискателя.");
+  if (!districtMatches && preferredDistricts.length) risks.push("Локация не подтверждена в предпочтениях соискателя.");
   if (!employmentMatches) risks.push("Формат занятости может не совпадать.");
   if (!experienceMatches && minExperience > 0) risks.push("Опыт ниже или не указан относительно требования.");
 
   if (!seekerSkills.length) improvementTips.push("Добавьте навыки в профиль, чтобы AI смог точнее подобрать вакансии.");
-  if (!preferredDistricts.length) improvementTips.push("Укажите желаемые районы или микрорайоны.");
+  if (!preferredDistricts.length && !prefersWholeCity) improvementTips.push("Укажите желаемые районы или микрорайоны.");
   if (!seekerEmploymentType) improvementTips.push("Выберите желаемый формат занятости.");
   if (!Number.isFinite(seekerExperience)) improvementTips.push("Укажите опыт работы в годах.");
   if (missingSkills.length) improvementTips.push(`Подтяните или явно укажите опыт по навыкам: ${missingSkills.join(", ")}.`);
@@ -90,6 +91,33 @@ function computeFallbackMatch({ seeker, vacancy }) {
     matched_skills: matchedSkills,
     missing_skills: missingSkills,
     confidence
+  };
+}
+
+function buildEmployerInsights(analysis, { seeker, vacancy }) {
+  const candidateName = seeker?.full_name || seeker?.name || "Кандидат";
+  const vacancyTitle = vacancy?.title || "эта вакансия";
+  const matchedSkills = Array.isArray(analysis.matched_skills) ? analysis.matched_skills : [];
+  const missingSkills = Array.isArray(analysis.missing_skills) ? analysis.missing_skills : [];
+
+  return {
+    ...analysis,
+    employer_summary:
+      analysis.employer_summary ||
+      (analysis.score >= 75
+        ? `${candidateName} выглядит сильным кандидатом на ${vacancyTitle}. ${analysis.summary}`
+        : `${candidateName} можно рассмотреть на ${vacancyTitle}, но стоит уточнить ключевые требования на первом контакте.`),
+    interview_focus:
+      Array.isArray(analysis.interview_focus) && analysis.interview_focus.length
+        ? analysis.interview_focus
+        : [
+            matchedSkills.length ? `Уточнить реальный опыт по навыкам: ${matchedSkills.slice(0, 3).join(", ")}.` : "Уточнить релевантный опыт по вакансии.",
+            missingSkills.length ? `Проверить пробелы по навыкам: ${missingSkills.slice(0, 3).join(", ")}.` : "Проверить комфорт по графику и формату занятости.",
+            "Подтвердить локацию и готовность быстро выйти на работу."
+          ].filter(Boolean),
+    outreach_message:
+      analysis.outreach_message ||
+      `Здравствуйте! У нас есть вакансия "${vacancyTitle}". Ваш профиль выглядит релевантным, будем рады вашему отклику в Qoldan.`
   };
 }
 
@@ -124,9 +152,12 @@ function serializeMatch(row) {
     improvement_tips: safeJsonArray(row.improvement_tips),
     matched_skills: safeJsonArray(row.matched_skills),
     missing_skills: safeJsonArray(row.missing_skills),
+    interview_focus: safeJsonArray(row.interview_focus),
     skills: safeJsonArray(row.skills),
     preferred_districts: safeJsonArray(row.preferred_districts),
-    ai_required_skills: safeJsonArray(row.ai_required_skills)
+    ai_required_skills: safeJsonArray(row.ai_required_skills),
+    employer_summary: row.employer_summary || "",
+    outreach_message: row.outreach_message || ""
   };
 }
 
@@ -171,6 +202,9 @@ async function saveMatchResult({ seekerId, vacancyId, inputHash, analysis }) {
     improvement_tips: JSON.stringify(analysis.improvement_tips || []),
     matched_skills: JSON.stringify(analysis.matched_skills || []),
     missing_skills: JSON.stringify(analysis.missing_skills || []),
+    employer_summary: analysis.employer_summary || "",
+    interview_focus: JSON.stringify(analysis.interview_focus || []),
+    outreach_message: analysis.outreach_message || "",
     confidence: analysis.confidence || 0,
     source: analysis.source || "fallback",
     provider: analysis.provider || null,
@@ -225,6 +259,10 @@ async function analyzeAndCacheMatch({ seeker, vacancy, audience = "seeker", forc
   } catch (error) {
     console.warn("[qoldan-ai]", JSON.stringify(createLlmFallbackLogEntry({ providerConfig: getProviderConfig(), audience, payload, error })));
     analysis = computeFallbackMatch(payload);
+  }
+
+  if (audience === "employer") {
+    analysis = buildEmployerInsights(analysis, { seeker, vacancy });
   }
 
   return saveMatchResult({
@@ -283,13 +321,25 @@ async function getVacancyMatches({ employerId, vacancyId }) {
     return null;
   }
 
-  const seekers = await db("users").where({ role: "seeker" }).orderBy("created_at", "desc").limit(20);
+  const applicantRows = await db("applications").where({ vacancy_id: vacancyId }).select("seeker_id");
+  const appliedSeekerIds = applicantRows.map((row) => row.seeker_id);
+  const outreachRows = await db("ai_candidate_outreach").where({ vacancy_id: vacancyId }).select("*");
+  const outreachBySeekerId = new Map(outreachRows.map((row) => [row.seeker_id, row]));
+  const seekersQuery = db("users").where({ role: "seeker" }).orderBy("created_at", "desc").limit(20);
+
+  if (appliedSeekerIds.length) {
+    seekersQuery.whereNotIn("id", appliedSeekerIds);
+  }
+
+  const seekers = await seekersQuery;
   const matches = [];
 
   for (const seeker of seekers) {
     const match = await analyzeAndCacheMatch({ seeker, vacancy, audience: "employer", force: false });
+    const outreach = outreachBySeekerId.get(seeker.id);
     matches.push({
       ...match,
+      status: outreach?.status || "new",
       seeker: {
         id: seeker.id,
         name: seeker.full_name || seeker.name,
@@ -310,12 +360,36 @@ async function getVacancyMatches({ employerId, vacancyId }) {
   };
 }
 
+async function refreshVacancyMatches({ employerId, vacancyId }) {
+  const vacancy = await db("vacancies").where({ id: vacancyId, employer_id: employerId }).first();
+  if (!vacancy) {
+    return null;
+  }
+
+  const applicantRows = await db("applications").where({ vacancy_id: vacancyId }).select("seeker_id");
+  const appliedSeekerIds = applicantRows.map((row) => row.seeker_id);
+  const seekersQuery = db("users").where({ role: "seeker" }).orderBy("created_at", "desc").limit(20);
+
+  if (appliedSeekerIds.length) {
+    seekersQuery.whereNotIn("id", appliedSeekerIds);
+  }
+
+  const seekers = await seekersQuery;
+  for (const seeker of seekers) {
+    await analyzeAndCacheMatch({ seeker, vacancy, audience: "employer", force: true });
+  }
+
+  return getVacancyMatches({ employerId, vacancyId });
+}
+
 module.exports = {
+  buildEmployerInsights,
   computeFallbackMatch,
   createLlmFallbackLogEntry,
   createInputHash,
   getRecommendations,
   getVacancyMatches,
+  refreshVacancyMatches,
   normalizeList,
   refreshRecommendations,
   safeJsonArray,

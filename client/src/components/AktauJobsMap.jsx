@@ -55,7 +55,7 @@ export default function AktauJobsMap() {
         <div className="space-y-2">
           <p className="text-xs uppercase tracking-[0.26em] text-muted-foreground">Карта рабочих мест Актау</p>
           <CardTitle className="text-2xl">Где сейчас открыты вакансии</CardTitle>
-          <CardDescription>Маркеры показывают активные рабочие точки по микрорайонам Актау. Нажмите на точку, чтобы увидеть вакансию.</CardDescription>
+          <CardDescription>Маркеры показывают примерное расположение активных вакансий по районам и микрорайонам Актау. Нажмите на точку, чтобы увидеть карточку.</CardDescription>
         </div>
 
         {isLoading ? (

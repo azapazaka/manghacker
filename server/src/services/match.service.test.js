@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { computeFallbackMatch, createLlmFallbackLogEntry } = require("./match.service");
+const { buildEmployerInsights, computeFallbackMatch, createLlmFallbackLogEntry } = require("./match.service");
 
 test("computeFallbackMatch rewards matching skills, district, employment type, and experience", () => {
   const result = computeFallbackMatch({
@@ -71,4 +71,24 @@ test("createLlmFallbackLogEntry includes context without leaking tokens", () => 
     vacancy_id: 12,
     reason: "401 Bearer <redacted>"
   });
+});
+
+test("buildEmployerInsights adds recruiter-facing fields for employer matching", () => {
+  const result = buildEmployerInsights(
+    {
+      score: 88,
+      summary: "Совпадают ключевые навыки и формат работы.",
+      matched_skills: ["касса", "продажи"],
+      missing_skills: ["1с"]
+    },
+    {
+      seeker: { name: "Алия" },
+      vacancy: { title: "Продавец-кассир" }
+    }
+  );
+
+  assert.match(result.employer_summary, /Алия/);
+  assert.ok(Array.isArray(result.interview_focus));
+  assert.ok(result.interview_focus.length >= 2);
+  assert.match(result.outreach_message, /Продавец-кассир/);
 });

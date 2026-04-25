@@ -6,14 +6,30 @@ const MATCH_JSON_SCHEMA = {
     score: { type: "number" },
     verdict: { type: "string", enum: ["strong", "good", "weak", "not_fit"] },
     summary: { type: "string" },
+    employer_summary: { type: "string" },
     reasons: { type: "array", items: { type: "string" } },
     risks: { type: "array", items: { type: "string" } },
     improvement_tips: { type: "array", items: { type: "string" } },
     matched_skills: { type: "array", items: { type: "string" } },
     missing_skills: { type: "array", items: { type: "string" } },
+    interview_focus: { type: "array", items: { type: "string" } },
+    outreach_message: { type: "string" },
     confidence: { type: "number" }
   },
-  required: ["score", "verdict", "summary", "reasons", "risks", "improvement_tips", "matched_skills", "missing_skills", "confidence"],
+  required: [
+    "score",
+    "verdict",
+    "summary",
+    "employer_summary",
+    "reasons",
+    "risks",
+    "improvement_tips",
+    "matched_skills",
+    "missing_skills",
+    "interview_focus",
+    "outreach_message",
+    "confidence"
+  ],
   additionalProperties: false
 };
 
@@ -31,13 +47,15 @@ const COMMON_MATCH_PROMPT_RULES = `Контекст платформы:
 Правила оценки:
 - Оценивай только профессиональное соответствие и практическую логистику работы.
 - Главные факторы: совпадение навыков, требования вакансии, опыт, район/микрорайон, формат занятости, график, описание профиля, описание вакансии.
+- Для employer-аудитории считай особенно важными: скорость выхода на работу, ясность профиля, микрорайон Актау, практические навыки для малого бизнеса и реалистичность ожиданий.
 - score всегда от 0 до 100.
 - verdict выбирай строго по score: 85-100 strong, 65-84 good, 40-64 weak, 0-39 not_fit.
 - confidence от 0 до 100 показывает, насколько оценка надежна при имеющихся данных.
 
 JSON-контракт:
 - Верни только валидный JSON без markdown, комментариев и текста вокруг.
-- Поля должны точно соответствовать схеме: score, verdict, summary, reasons, risks, improvement_tips, matched_skills, missing_skills, confidence.
+- Поля должны точно соответствовать схеме: score, verdict, summary, employer_summary, reasons, risks, improvement_tips, matched_skills, missing_skills, interview_focus, outreach_message, confidence.
+- Даже если поле не используется для текущей аудитории, верни его: для seeker-аудитории employer_summary = "", interview_focus = [], outreach_message = "".
 - summary: 1 короткое предложение на русском.
 - reasons, risks, improvement_tips: короткие конкретные пункты, максимум 5.
 - matched_skills и missing_skills: только навыки из входных данных или явно очевидные требования вакансии, максимум 8.
@@ -58,8 +76,12 @@ const EMPLOYER_MATCH_SYSTEM_PROMPT = `Роль:
 
 Как думать:
 - Смотри на кандидата глазами работодателя: закрывает ли он требования вакансии, какие навыки совпадают, где есть пробелы, насколько понятен профиль.
+- Помни, что это чаще всего небольшие работодатели Актау: кафе, магазины, мастерские, доставка, сервисные точки. Им важны надежность, близость по локации, быстрый старт и понятные прикладные навыки.
 - improvement_tips адресуй работодателю и кандидату нейтрально: что стоит уточнить на первом контакте или какие данные попросить добавить.
 - risks формулируй как проверяемые рабочие вопросы, а не как окончательные негативные выводы.
+- employer_summary: отдельная короткая recruiter-style сводка для работодателя.
+- interview_focus: 2-4 коротких пункта, что уточнить на первом созвоне или в чате.
+- outreach_message: короткое вежливое приглашение кандидату откликнуться на вакансию, 1-2 предложения, на русском.
 
 ${COMMON_MATCH_PROMPT_RULES}`;
 
@@ -129,6 +151,16 @@ const ONBOARDING_JSON_SCHEMA = {
 };
 
 function getProviderConfig() {
+  if (env.aiProvider === "openai") {
+    return {
+      provider: "openai",
+      apiKey: env.openAiApiKey,
+      model: env.openAiModel,
+      url: "https://api.openai.com/v1/chat/completions",
+      headers: {}
+    };
+  }
+
   if (env.aiProvider === "groq") {
     return {
       provider: "groq",
@@ -161,6 +193,26 @@ function getProviderConfig() {
   };
 }
 
+function getProviderConfigs() {
+  const primary = getProviderConfig();
+
+  if (primary.provider !== "openrouter") {
+    return [primary];
+  }
+
+  const configs = [primary];
+
+  if (env.openRouterFallbackApiKey && env.openRouterFallbackApiKey !== env.openRouterApiKey) {
+    configs.push({
+      ...primary,
+      apiKey: env.openRouterFallbackApiKey,
+      name: "openrouter-fallback"
+    });
+  }
+
+  return configs;
+}
+
 function parseModelContent(content) {
   if (!content) {
     throw new Error("LLM response is empty.");
@@ -183,11 +235,14 @@ function normalizeAnalysisPayload(value) {
     score,
     verdict,
     summary: String(value.summary || "").trim(),
+    employer_summary: String(value.employer_summary || "").trim(),
     reasons: Array.isArray(value.reasons) ? value.reasons.map(String).filter(Boolean).slice(0, 5) : [],
     risks: Array.isArray(value.risks) ? value.risks.map(String).filter(Boolean).slice(0, 5) : [],
     improvement_tips: Array.isArray(value.improvement_tips) ? value.improvement_tips.map(String).filter(Boolean).slice(0, 5) : [],
     matched_skills: Array.isArray(value.matched_skills) ? value.matched_skills.map(String).filter(Boolean).slice(0, 8) : [],
     missing_skills: Array.isArray(value.missing_skills) ? value.missing_skills.map(String).filter(Boolean).slice(0, 8) : [],
+    interview_focus: Array.isArray(value.interview_focus) ? value.interview_focus.map(String).filter(Boolean).slice(0, 4) : [],
+    outreach_message: String(value.outreach_message || "").trim(),
     confidence
   };
 }
@@ -195,113 +250,140 @@ function normalizeAnalysisPayload(value) {
 function sanitizeLlmError(error) {
   return String(error?.message || error || "Unknown LLM error")
     .replace(/Bearer\s+[A-Za-z0-9._-]+/g, "Bearer <redacted>")
+    .replace(/sk-proj-[A-Za-z0-9_-]+/g, "<redacted>")
     .replace(/gsk_[A-Za-z0-9_-]+/g, "<redacted>")
     .replace(/sk-or-v1-[A-Za-z0-9_-]+/g, "<redacted>");
 }
 
 async function requestMatchAnalysis({ payload, audience = "seeker" }) {
-  const providerConfig = getProviderConfig();
-
-  if (!providerConfig.apiKey) {
-    throw new Error(`${providerConfig.provider} API key is not configured.`);
-  }
-
-  const response = await fetch(providerConfig.url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${providerConfig.apiKey}`,
-      "Content-Type": "application/json",
-      ...providerConfig.headers
-    },
-    body: JSON.stringify({
-      model: providerConfig.model,
-      stream: false,
-      temperature: 0.2,
-      max_tokens: 900,
-      messages: [
-        {
-          role: "system",
-          content: audience === "employer" ? EMPLOYER_MATCH_SYSTEM_PROMPT : SEEKER_MATCH_SYSTEM_PROMPT
-        },
-        {
-          role: "user",
-          content: JSON.stringify(payload)
-        }
-      ],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "qoldan_match_analysis",
-          strict: true,
-          schema: MATCH_JSON_SCHEMA
-        }
+  const providerConfigs = getProviderConfigs();
+  const requestBody = {
+    stream: false,
+    temperature: 0.2,
+    max_tokens: 900,
+    messages: [
+      {
+        role: "system",
+        content: audience === "employer" ? EMPLOYER_MATCH_SYSTEM_PROMPT : SEEKER_MATCH_SYSTEM_PROMPT
+      },
+      {
+        role: "user",
+        content: JSON.stringify(payload)
       }
-    })
-  });
+    ],
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: "qoldan_match_analysis",
+        strict: true,
+        schema: MATCH_JSON_SCHEMA
+      }
+    }
+  };
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`LLM request failed with ${response.status}: ${body.slice(0, 180)}`);
+  let lastError;
+
+  for (const providerConfig of providerConfigs) {
+    if (!providerConfig.apiKey) {
+      lastError = new Error(`${providerConfig.provider} API key is not configured.`);
+      continue;
+    }
+
+    try {
+      const response = await fetch(providerConfig.url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${providerConfig.apiKey}`,
+          "Content-Type": "application/json",
+          ...providerConfig.headers
+        },
+        body: JSON.stringify({
+          model: providerConfig.model,
+          ...requestBody
+        })
+      });
+
+      if (!response.ok) {
+        const body = await response.text();
+        throw new Error(`LLM request failed with ${response.status}: ${body.slice(0, 180)}`);
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content;
+      return {
+        ...normalizeAnalysisPayload(parseModelContent(content)),
+        source: "llm",
+        provider: providerConfig.provider,
+        model: providerConfig.model
+      };
+    } catch (error) {
+      lastError = error;
+    }
   }
 
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content;
-  return {
-    ...normalizeAnalysisPayload(parseModelContent(content)),
-    source: "llm",
-    provider: providerConfig.provider,
-    model: providerConfig.model
-  };
+  throw lastError || new Error("No LLM providers configured.");
 }
 
 async function requestOnboardingParse(messagesHistory) {
-  const providerConfig = getProviderConfig();
-
-  if (!providerConfig.apiKey) {
-    throw new Error(`${providerConfig.provider} API key is not configured.`);
-  }
-
-  const response = await fetch(providerConfig.url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${providerConfig.apiKey}`,
-      "Content-Type": "application/json",
-      ...providerConfig.headers
-    },
-    body: JSON.stringify({
-      model: providerConfig.model,
-      stream: false,
-      temperature: 0.3,
-      max_tokens: 500,
-      messages: [
-        { role: "system", content: ONBOARDING_SYSTEM_PROMPT },
-        ...messagesHistory
-      ],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "qoldan_onboarding_state",
-          strict: true,
-          schema: ONBOARDING_JSON_SCHEMA
-        }
+  const providerConfigs = getProviderConfigs();
+  const requestBody = {
+    stream: false,
+    temperature: 0.3,
+    max_tokens: 500,
+    messages: [{ role: "system", content: ONBOARDING_SYSTEM_PROMPT }, ...messagesHistory],
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: "qoldan_onboarding_state",
+        strict: true,
+        schema: ONBOARDING_JSON_SCHEMA
       }
-    })
-  });
+    }
+  };
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`LLM onboarding request failed with ${response.status}: ${body.slice(0, 180)}`);
+  let lastError;
+
+  for (const providerConfig of providerConfigs) {
+    if (!providerConfig.apiKey) {
+      lastError = new Error(`${providerConfig.provider} API key is not configured.`);
+      continue;
+    }
+
+    try {
+      const response = await fetch(providerConfig.url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${providerConfig.apiKey}`,
+          "Content-Type": "application/json",
+          ...providerConfig.headers
+        },
+        body: JSON.stringify({
+          model: providerConfig.model,
+          ...requestBody
+        })
+      });
+
+      if (!response.ok) {
+        const body = await response.text();
+        throw new Error(`LLM onboarding request failed with ${response.status}: ${body.slice(0, 180)}`);
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content;
+      return parseModelContent(content);
+    } catch (error) {
+      lastError = error;
+    }
   }
 
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content;
-  return parseModelContent(content);
+  throw lastError || new Error("No LLM providers configured.");
 }
 
 module.exports = {
   requestMatchAnalysis,
   requestOnboardingParse,
   getProviderConfig,
+  getProviderConfigs,
   sanitizeLlmError,
   MATCH_JSON_SCHEMA,
   SEEKER_MATCH_SYSTEM_PROMPT,

@@ -9,6 +9,8 @@ router.get("/", controller.listVacancies);
 router.get("/my", requireAuth, requireRole("employer"), controller.getMyVacancies);
 router.get("/:id/candidates", requireAuth, requireRole("employer"), controller.getVacancyCandidates);
 router.get("/:id/matches", requireAuth, requireRole("employer"), controller.getVacancyMatches);
+router.post("/:id/matches/refresh", requireAuth, requireRole("employer"), controller.refreshEmployerVacancyMatches);
+router.post("/:id/outreach/:seekerId", requireAuth, requireRole("employer"), controller.inviteCandidate);
 router.get("/:id", controller.getVacancy);
 router.post("/", requireAuth, requireRole("employer"), controller.createVacancy);
 router.put("/:id", requireAuth, requireRole("employer"), controller.updateVacancy);

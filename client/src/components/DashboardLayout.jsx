@@ -38,6 +38,7 @@ export default function DashboardLayout() {
       : [
           { to: "/dashboard/vacancies", label: "Мои вакансии", icon: BriefcaseBusiness },
           { to: "/dashboard/candidates", label: "Кандидаты", icon: Users },
+          { to: "/dashboard/ai", label: "AI подбор", icon: Layers },
           { to: "/dashboard/profile", label: "Профиль", icon: Building2 }
         ];
 

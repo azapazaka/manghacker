@@ -59,6 +59,21 @@ async function applyToVacancy(req, res) {
       })
       .returning("*");
 
+    await db("ai_candidate_outreach")
+      .insert({
+        vacancy_id,
+        seeker_id: req.user.id,
+        status: "applied",
+        responded_at: db.fn.now(),
+        updated_at: db.fn.now()
+      })
+      .onConflict(["vacancy_id", "seeker_id"])
+      .merge({
+        status: "applied",
+        responded_at: db.fn.now(),
+        updated_at: db.fn.now()
+      });
+
     if (vacancy.telegram_chat_id) {
       try {
         await sendResumeToEmployer(vacancy.telegram_chat_id, req.file.path, {

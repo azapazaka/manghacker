@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { authApi } from "../api/auth";
 import { setAuthToken } from "../api/client";
 import { AuthContext } from "./auth-context";
@@ -8,6 +8,27 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(localStorage.getItem("qoldan_token"));
   const [isLoading, setIsLoading] = useState(true);
 
+  const refreshUser = useCallback(async (nextToken = token) => {
+    if (!nextToken) {
+      setAuthToken(null);
+      setUser(null);
+      return null;
+    }
+
+    try {
+      setAuthToken(nextToken);
+      const { data } = await authApi.me();
+      setUser(data.user);
+      return data.user;
+    } catch {
+      localStorage.removeItem("qoldan_token");
+      setAuthToken(null);
+      setToken(null);
+      setUser(null);
+      return null;
+    }
+  }, [token]);
+
   useEffect(() => {
     const bootstrap = async () => {
       if (!token) {
@@ -16,22 +37,12 @@ export function AuthProvider({ children }) {
         return;
       }
 
-      try {
-        setAuthToken(token);
-        const { data } = await authApi.me();
-        setUser(data.user);
-      } catch {
-        localStorage.removeItem("qoldan_token");
-        setAuthToken(null);
-        setToken(null);
-        setUser(null);
-      } finally {
-        setIsLoading(false);
-      }
+      await refreshUser(token);
+      setIsLoading(false);
     };
 
     bootstrap();
-  }, [token]);
+  }, [refreshUser, token]);
 
   const saveSession = (payload) => {
     localStorage.setItem("qoldan_token", payload.token);
@@ -72,7 +83,9 @@ export function AuthProvider({ children }) {
     isAuthenticated: Boolean(user && token),
     login,
     register,
-    logout
+    logout,
+    refreshUser,
+    setUser
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

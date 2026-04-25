@@ -1,6 +1,8 @@
 const db = require("../db/knex");
-const { getVacancyMatches: getAiVacancyMatches } = require("../services/match.service");
+const { getVacancyMatches: getAiVacancyMatches, refreshVacancyMatches } = require("../services/match.service");
 const { normalizeList } = require("../services/match.service");
+const env = require("../config/env");
+const { sendInvitationToSeeker } = require("../services/telegram.service");
 
 function baseVacancyQuery() {
   return db("vacancies").join("users as employers", "vacancies.employer_id", "employers.id");
@@ -234,6 +236,94 @@ async function getVacancyMatches(req, res) {
   }
 }
 
+async function refreshEmployerVacancyMatches(req, res) {
+  try {
+    const result = await refreshVacancyMatches({
+      employerId: req.user.id,
+      vacancyId: req.params.id
+    });
+
+    if (!result) {
+      return res.status(404).json({ message: "Вакансия не найдена." });
+    }
+
+    return res.json({ data: result, message: "AI-подбор кандидатов обновлен." });
+  } catch (error) {
+    console.error("refreshEmployerVacancyMatches error", error);
+    return res.status(500).json({ message: "Не удалось пересчитать AI-кандидатов." });
+  }
+}
+
+async function inviteCandidate(req, res) {
+  try {
+    const vacancy = await db("vacancies")
+      .join("users as employers", "vacancies.employer_id", "employers.id")
+      .where("vacancies.id", req.params.id)
+      .where("vacancies.employer_id", req.user.id)
+      .select("vacancies.*", db.raw("COALESCE(employers.company_name, employers.contact_name, employers.name) as employer_name"))
+      .first();
+
+    if (!vacancy) {
+      return res.status(404).json({ message: "Вакансия не найдена." });
+    }
+
+    const seeker = await db("users").where({ id: req.params.seekerId, role: "seeker" }).first();
+    if (!seeker) {
+      return res.status(404).json({ message: "Соискатель не найден." });
+    }
+
+    const application = await db("applications").where({ vacancy_id: vacancy.id, seeker_id: seeker.id }).first();
+    if (application) {
+      return res.status(409).json({ message: "Этот соискатель уже откликнулся на вакансию." });
+    }
+
+    const matchResult = await getAiVacancyMatches({ employerId: req.user.id, vacancyId: vacancy.id });
+    const match = matchResult?.matches?.find((item) => item.seeker?.id === seeker.id);
+
+    const [outreach] = await db("ai_candidate_outreach")
+      .insert({
+        vacancy_id: vacancy.id,
+        seeker_id: seeker.id,
+        status: "invited",
+        sent_at: db.fn.now(),
+        updated_at: db.fn.now()
+      })
+      .onConflict(["vacancy_id", "seeker_id"])
+      .merge({
+        status: "invited",
+        sent_at: db.fn.now(),
+        updated_at: db.fn.now()
+      })
+      .returning("*");
+
+    let telegramDelivered = false;
+    if (env.telegramBotToken && seeker.telegram_chat_id) {
+      try {
+        await sendInvitationToSeeker(seeker.telegram_chat_id, {
+          vacancyTitle: vacancy.title,
+          companyName: vacancy.employer_name,
+          score: match?.score,
+          message: match?.outreach_message
+        });
+        telegramDelivered = true;
+      } catch (error) {
+        console.warn("inviteCandidate telegram error", error.message);
+      }
+    }
+
+    return res.json({
+      data: {
+        outreach,
+        telegramDelivered
+      },
+      message: telegramDelivered ? "Приглашение отправлено в Telegram и сохранено в системе." : "Приглашение сохранено. Telegram пока не доставлен."
+    });
+  } catch (error) {
+    console.error("inviteCandidate error", error);
+    return res.status(500).json({ message: "Не удалось пригласить кандидата." });
+  }
+}
+
 module.exports = {
   listVacancies,
   getVacancy,
@@ -242,5 +332,7 @@ module.exports = {
   deleteVacancy,
   getMyVacancies,
   getVacancyCandidates,
-  getVacancyMatches
+  getVacancyMatches,
+  refreshEmployerVacancyMatches,
+  inviteCandidate
 };

@@ -76,15 +76,14 @@ async function parseOnboarding(req, res) {
     const parsedState = await requestOnboardingParse(messages);
 
     if (parsedState.match_ready) {
-      const districts = parsedState.location_type === "city" 
-        ? ["Весь город"] 
-        : parsedState.district ? [parsedState.district] : [];
-        
+      const districts = parsedState.location_type === "district" && parsedState.district ? [parsedState.district] : [];
+
       const patch = {
         skills: JSON.stringify(normalizeList(parsedState.skills || [])),
         preferred_districts: JSON.stringify(normalizeList(districts)),
         preferred_employment_type: parsedState.work_schedule || null,
         profile_summary: parsedState.desired_role || "",
+        availability: parsedState.location_type || "",
         profile_updated_at: db.fn.now()
       };
 

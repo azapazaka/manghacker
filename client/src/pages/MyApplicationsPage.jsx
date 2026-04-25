@@ -1,5 +1,5 @@
 import { Check, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { applicationApi } from "../api/applications";
 import TelegramBanner from "../components/TelegramBanner";
@@ -16,19 +16,20 @@ import { applicationStatusLabel, applicationStatusVariant, employmentTypeLabel, 
 const botUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME || "QooldaaanBot";
 
 export default function MyApplicationsPage() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const location = useLocation();
   const currentTab = location.pathname.split("/").pop(); // applications, inbox, profile
   const [offers, setOffers] = useState([]);
   const [applications, setApplications] = useState([]);
   const [message, setMessage] = useState("");
-  const showOnboarding = Boolean(user && !user.profile_summary);
+  const [isOnboardingDismissed, setIsOnboardingDismissed] = useState(false);
+  const shouldShowOnboarding = Boolean(user?.role === "seeker" && !user?.profile_summary && !isOnboardingDismissed);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const [offersResponse, applicationsResponse] = await Promise.all([applicationApi.offers(), applicationApi.my()]);
     setOffers(offersResponse.data.data);
     setApplications(applicationsResponse.data.data);
-  };
+  }, []);
 
   useEffect(() => {
     const bootstrap = async () => {
@@ -36,7 +37,7 @@ export default function MyApplicationsPage() {
     };
 
     bootstrap();
-  }, []);
+  }, [load]);
 
   const handleDecision = async (applicationId, decision) => {
     const action = decision === "accept" ? applicationApi.acceptOffer : applicationApi.rejectOffer;
@@ -47,12 +48,15 @@ export default function MyApplicationsPage() {
 
   return (
     <div className="space-y-6">
-      <SeekerOnboarding 
-        open={showOnboarding} 
-        onComplete={() => {
-          window.location.reload();
-        }} 
-      />
+      {shouldShowOnboarding ? (
+        <SeekerOnboarding
+          open={shouldShowOnboarding}
+          onComplete={async () => {
+            setIsOnboardingDismissed(true);
+            await refreshUser();
+          }}
+        />
+      ) : null}
 
       {currentTab === "vacancies" && (
         <VacancyFeed />

@@ -5,6 +5,8 @@ const env = require("../config/env");
 
 let bot;
 let initialized = false;
+let inboundUpdatesDisabled = false;
+let conflictWarningShown = false;
 
 function normalizeUsername(value) {
   return value ? value.replace(/^@/, "").trim().toLowerCase() : "";
@@ -29,7 +31,7 @@ async function initTelegramBot() {
 
   initialized = true;
 
-  if (!env.telegramBotToken) {
+  if (!env.telegramBotToken || env.telegramMode === "disabled") {
     return bot;
   }
 
@@ -44,7 +46,23 @@ async function initTelegramBot() {
   }
 
   bot.on("polling_error", (error) => {
-    console.error("Telegram polling error:", error.message);
+    const message = String(error?.message || "");
+
+    if (message.includes("409 Conflict")) {
+      inboundUpdatesDisabled = true;
+
+      if (!conflictWarningShown) {
+        conflictWarningShown = true;
+        console.warn("Telegram polling disabled: another bot instance is already consuming getUpdates. Outbound Telegram notifications will continue to work.");
+      }
+
+      if (typeof bot.stopPolling === "function") {
+        bot.stopPolling().catch(() => {});
+      }
+      return;
+    }
+
+    console.error("Telegram polling error:", message);
   });
 
   return bot;
@@ -93,8 +111,32 @@ async function sendOfferDecisionToEmployer(chatId, { vacancyTitle, seekerName, d
   await activeBot.sendMessage(chatId, message);
 }
 
+async function sendInvitationToSeeker(chatId, { vacancyTitle, companyName, score, message }) {
+  const activeBot = await initTelegramBot();
+
+  if (!activeBot) {
+    throw new Error("Telegram bot token is missing.");
+  }
+
+  const text = [
+    "Новая рекомендация от работодателя",
+    `Вакансия: ${vacancyTitle}`,
+    `Компания: ${companyName}`,
+    score ? `Совпадение AI: ${score}%` : null,
+    message || "Ваш профиль показался работодателю релевантным. Откройте Qoldan и откликнитесь, если вакансия вам подходит."
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  await activeBot.sendMessage(chatId, text);
+}
+
 function getTelegramWebhookPath() {
   return env.telegramWebhookPath;
+}
+
+function isTelegramInboundDisabled() {
+  return inboundUpdatesDisabled;
 }
 
 module.exports = {
@@ -102,5 +144,7 @@ module.exports = {
   sendResumeToEmployer,
   sendOfferToSeeker,
   sendOfferDecisionToEmployer,
-  getTelegramWebhookPath
+  sendInvitationToSeeker,
+  getTelegramWebhookPath,
+  isTelegramInboundDisabled
 };

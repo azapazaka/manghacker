@@ -19,7 +19,7 @@ Supabase is supported as the hosted PostgreSQL provider for deployment. The back
 - Russian as the main MVP language
 - Public vacancy feed first, role-based dashboards second
 - Telegram is required for both roles
-- AI assistant is intentionally out of scope for the current stage
+- AI matching is part of the MVP experience for seekers and employers
 
 ## Project Structure
 
@@ -147,6 +147,12 @@ For MVP, polling is acceptable:
 TELEGRAM_MODE=polling
 ```
 
+For local development when another bot instance is already running, you can disable inbound polling and keep the rest of the app working:
+
+```env
+TELEGRAM_MODE=disabled
+```
+
 For more stable production hosting, switch to webhook mode:
 
 ```env
@@ -175,9 +181,13 @@ Until that migration is implemented, use a host with persistent disk if you need
 
 - Registration and login for seeker and employer
 - Public vacancy feed with filters and search
+- AI-ranked seeker feed with fallback matching
+- Employer AI discovery flow with invite-to-apply
 - Vacancy details page
 - Employer dashboard with create, edit, close vacancy
 - Seeker applications page with inbox/offers
+- AI onboarding with manual fallback profile setup
+- Approximate jobs map for Aktau districts powered by AI recommendations
 - PDF resume upload up to 5 MB
 - Telegram delivery of resumes and offer statuses
 
@@ -194,8 +204,35 @@ UPLOAD_DIR=../uploads
 FILE_STORAGE_DRIVER=local
 CLIENT_ORIGIN=http://localhost:3001
 DEV_CLIENT_URL=http://127.0.0.1:5173
+AI_PROVIDER=openai
+OPENAI_API_KEY=replace_me
+OPENAI_MODEL=gpt-4.1-mini
 ```
+
+## Demo AI Setup
+
+Use direct OpenAI for the employer AI demo:
+
+```env
+AI_PROVIDER=openai
+OPENAI_API_KEY=your_openai_key
+OPENAI_MODEL=gpt-4.1-mini
+```
+
+Then run:
+
+```bash
+cd server
+node scripts/seed-mock-data.js
+```
+
+This prepares `Aktau City Jobs Hub` with demo vacancies and mock seekers for `/dashboard/ai`.
+
+Important:
+
+- keep the OpenAI key only in `server/.env`
+- rotate the key before final delivery if it was ever shared outside the local machine
 
 ## Status
 
-This repository contains the backend, frontend, and Telegram bot foundation for the MVP. AI assistant features are intentionally excluded for now.
+This repository contains the backend, frontend, AI matching flow, and Telegram bot foundation for the MVP. AI is implemented as part of onboarding and vacancy recommendation behavior, not only as pitch material.

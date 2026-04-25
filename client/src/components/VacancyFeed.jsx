@@ -40,6 +40,43 @@ function resolveCoverImage(vacancy) {
   return categoryCoverMap[vacancy?.category] || defaultCover;
 }
 
+function normalizeText(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function matchesFilters(item, filters) {
+  const vacancy = item?.vacancy || {};
+  const normalizedSearch = normalizeText(filters.search);
+  const normalizedCategory = normalizeText(filters.category);
+  const normalizedDistrict = normalizeText(vacancy.microdistrict || vacancy.district);
+  const normalizedEmploymentType = normalizeText(filters.employment_type);
+
+  if (normalizedSearch) {
+    const haystack = [vacancy.title, vacancy.description, vacancy.category, vacancy.district]
+      .concat(vacancy.microdistrict || [])
+      .map(normalizeText)
+      .join(" ");
+
+    if (!haystack.includes(normalizedSearch)) {
+      return false;
+    }
+  }
+
+  if (normalizedCategory && !normalizeText(vacancy.category).includes(normalizedCategory)) {
+    return false;
+  }
+
+  if (normalizeText(filters.district) && !normalizedDistrict.includes(normalizeText(filters.district))) {
+    return false;
+  }
+
+  if (normalizedEmploymentType && normalizeText(vacancy.employment_type) !== normalizedEmploymentType) {
+    return false;
+  }
+
+  return true;
+}
+
 export default function VacancyFeed() {
   const { isAuthenticated, user } = useAuth();
   const feedRef = useRef(null);
@@ -49,6 +86,7 @@ export default function VacancyFeed() {
   const [error, setError] = useState("");
 
   const query = useMemo(() => Object.fromEntries(Object.entries(filters).filter(([, value]) => value)), [filters]);
+  const filteredFeedItems = useMemo(() => feedItems.filter((item) => matchesFilters(item, filters)), [feedItems, filters]);
 
   useEffect(() => {
     let cancelled = false;
@@ -155,14 +193,14 @@ export default function VacancyFeed() {
         <Card className="h-[calc(100vh-80px)] rounded-3xl">
           <CardContent className="grid h-full place-items-center p-6 text-rose-600">{error}</CardContent>
         </Card>
-      ) : feedItems.length === 0 ? (
+      ) : filteredFeedItems.length === 0 ? (
         <Card className="h-[calc(100vh-80px)] rounded-3xl">
           <CardContent className="grid h-full place-items-center p-6 text-muted-foreground">По текущим фильтрам вакансий пока нет.</CardContent>
         </Card>
       ) : (
         <div className="relative">
           <div ref={feedRef} className="scrollbar-hide h-[calc(100vh-80px)] snap-y snap-mandatory overflow-y-scroll rounded-3xl">
-            {feedItems.map((item, index) => (
+            {filteredFeedItems.map((item, index) => (
               <VacancyCard
                 key={item.id}
                 vacancy={item.vacancy}
@@ -175,7 +213,7 @@ export default function VacancyFeed() {
             ))}
           </div>
 
-          {feedItems.length > 1 ? (
+          {filteredFeedItems.length > 1 ? (
             <button
               type="button"
               onClick={goToNextCard}
