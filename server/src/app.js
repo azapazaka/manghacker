@@ -29,6 +29,22 @@ function extractOrigin(value) {
   }
 }
 
+function isAllowedOrigin(origin, allowedOrigins, allowedOriginSuffixes) {
+  if (allowedOrigins.includes(origin)) {
+    return true;
+  }
+
+  try {
+    const hostname = new URL(origin).hostname.toLowerCase();
+    return allowedOriginSuffixes.some((suffix) => {
+      const normalizedSuffix = suffix.toLowerCase();
+      return hostname === normalizedSuffix.replace(/^\./, "") || hostname.endsWith(normalizedSuffix);
+    });
+  } catch {
+    return false;
+  }
+}
+
 function createDevFallbackPage() {
   return `<!doctype html>
 <html lang="ru">
@@ -76,7 +92,7 @@ function createDevFallbackPage() {
 }
 
 const allowedOrigins = uniqueOrigins([
-  env.clientOrigin,
+  ...env.clientOrigins,
   extractOrigin(env.devClientUrl),
   `http://localhost:${env.port}`,
   `http://127.0.0.1:${env.port}`,
@@ -87,7 +103,7 @@ const allowedOrigins = uniqueOrigins([
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin || isAllowedOrigin(origin, allowedOrigins, env.allowedOriginSuffixes)) {
         callback(null, true);
         return;
       }

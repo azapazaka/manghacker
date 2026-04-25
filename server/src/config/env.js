@@ -5,7 +5,17 @@ const dotenv = require("dotenv");
 const serverRoot = path.resolve(__dirname, "../..");
 dotenv.config({ path: path.join(serverRoot, ".env") });
 
+function parseCsv(value) {
+  return String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 const uploadDir = path.resolve(serverRoot, process.env.UPLOAD_DIR || "../uploads");
+const configuredClientOrigins = parseCsv(process.env.CLIENT_ORIGIN || "http://localhost:3001");
+const allowedOriginSuffixes = parseCsv(process.env.ALLOWED_ORIGIN_SUFFIXES);
+const renderExternalUrl = process.env.RENDER_EXTERNAL_URL || "";
 
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -23,14 +33,16 @@ module.exports = {
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || "",
   telegramBotUsername: process.env.TELEGRAM_BOT_USERNAME || "QoldanBot",
   telegramMode: process.env.TELEGRAM_MODE || "polling",
-  telegramWebhookUrl: process.env.TELEGRAM_WEBHOOK_URL || "",
   telegramWebhookPath: process.env.TELEGRAM_WEBHOOK_PATH || "/api/telegram/webhook",
   uploadDir,
   fileStorageDriver: process.env.FILE_STORAGE_DRIVER || "local",
   supabaseStorageBucket: process.env.SUPABASE_STORAGE_BUCKET || "resumes",
   maxFileSizeMb: Number(process.env.MAX_FILE_SIZE_MB || 5),
-  clientOrigin: process.env.CLIENT_ORIGIN || "http://localhost:3001",
+  clientOrigin: configuredClientOrigins[0] || "http://localhost:3001",
+  clientOrigins: configuredClientOrigins,
+  allowedOriginSuffixes,
   devClientUrl: process.env.DEV_CLIENT_URL || "http://127.0.0.1:5173",
+  renderExternalUrl,
   aiProvider: process.env.AI_PROVIDER || "openrouter",
   openAiApiKey: process.env.OPENAI_API_KEY || "",
   openAiModel: process.env.OPENAI_MODEL || "gpt-4.1-mini",
@@ -41,5 +53,6 @@ module.exports = {
   groqModel: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
   xaiApiKey: process.env.XAI_API_KEY || "",
   xaiModel: process.env.XAI_MODEL || "grok-4.20-reasoning",
-  aiMatchCacheTtlHours: Number(process.env.AI_MATCH_CACHE_TTL_HOURS || 24)
+  aiMatchCacheTtlHours: Number(process.env.AI_MATCH_CACHE_TTL_HOURS || 24),
+  telegramWebhookUrl: process.env.TELEGRAM_WEBHOOK_URL || renderExternalUrl || ""
 };
