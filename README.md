@@ -1,6 +1,6 @@
 # Qoldan
 
-Qoldan is a hackathon MVP for the Mangystau region: employers publish vacancies, job seekers apply with a PDF resume, and the employer receives that resume directly in Telegram.
+Qoldan is a MVP for the Mangystau region: employers publish vacancies, job seekers apply with a PDF resume, and the employer receives that resume directly in Telegram.
 
 ## Stack
 
